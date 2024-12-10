@@ -18,7 +18,8 @@ ResultTree *parse(FILE *file) {
     yyin = file;
     yyparse();
 
-    ResultTree *parseResult = malloc(sizeof(ResultTree));
+    size_t __size = sizeof(ResultTree);
+    ResultTree *parseResult = malloc(__size);
     parseResult->tree = tree;
     parseResult->size = treeSize;
     parseResult->errors = errors;

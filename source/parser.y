@@ -10,7 +10,7 @@
     TreeNode* node;
 }
 
-%token <node> PLUS MINUS MUL DIV PERCENT EQ NEQ
+%token <node> PLUS MINUS MUL DIV PERCENT EQ NEQ ASSIGN
 %token <node> LT GT LTEQ GTEQ
 %token <node> AND OR NOT
 %token <node> OF
@@ -28,14 +28,20 @@
 %token <node> LPAREN RPAREN LBRACE RBRACE LBRACKET RBRACKET
 %token <node> TYPEDEF
 
+%left ASSIGN
+%left AND OR
+%left EQ NEQ
+%left LT GT LTEQ GTEQ
+%left PLUS MINUS
+%left MUL DIV PERCENT
 
 %type <node> typeRef
 %type <node> funcSignature
 %type <node> arg
+%type <node> source
 %type <node> sourceItem
 %type <node> sourceItemList
 %type <node> statement
-%type <node> variable
 %type <node> if
 %type <node> block
 %type <node> loop
@@ -45,7 +51,6 @@
 %type <node> builtin
 %type <node> custom
 %type <node> array
-%type <node> source
 %type <node> argList
 %type <node> argListItems
 %type <node> typeRefOptional
@@ -111,8 +116,7 @@ array: typeRef ARRAY LBRACKET DEC RBRACKET {{TreeNode* nodes[] = {$1}; $$ = crea
 statementList: statement statementList {{TreeNode* nodes[] = {$1, $2}; $$ = createNode("statementList", nodes, sizeof(nodes) / sizeof(nodes[0]), "");}}
     | {{$$ = NULL;}};
 
-statement: variable {{$$ =  $1;}}
-    | if            {{$$ =  $1;}}
+statement: if            {{$$ =  $1;}}
     | loop          {{$$ =  $1;}}
     | repeat        {{$$ =  $1;}}
     | block         {{$$ =  $1;}}
@@ -152,13 +156,13 @@ expr: binary    {{$$ = $1;}}
     | place     {{$$ = $1;}}
     | literal   {{$$ = $1;}};
 
-binary: expr EQ expr         {{TreeNode* nodes[] = {$1, $3}; $$ = createNode("ASSIGN", nodes, sizeof(nodes) / sizeof(nodes[0]), "");}}
+binary: expr ASSIGN expr         {{TreeNode* nodes[] = {$1, $3}; $$ = createNode("ASSIGN", nodes, sizeof(nodes) / sizeof(nodes[0]), "");}}
     | expr PLUS expr            {{TreeNode* nodes[] = {$1, $3}; $$ = createNode("PLUS", nodes, sizeof(nodes) / sizeof(nodes[0]), "");}}
     | expr MINUS expr           {{TreeNode* nodes[] = {$1, $3}; $$ = createNode("MINUS", nodes, sizeof(nodes) / sizeof(nodes[0]), "");}}
     | expr MUL expr            {{TreeNode* nodes[] = {$1, $3}; $$ = createNode("MUL", nodes, sizeof(nodes) / sizeof(nodes[0]), "");}}
     | expr DIV expr             {{TreeNode* nodes[] = {$1, $3}; $$ = createNode("DIV", nodes, sizeof(nodes) / sizeof(nodes[0]), "");}}
     | expr PERCENT expr         {{TreeNode* nodes[] = {$1, $3}; $$ = createNode("PERCENT", nodes, sizeof(nodes) / sizeof(nodes[0]), "");}}
-    | expr EQ EQ expr     {{TreeNode* nodes[] = {$1, $4}; $$ = createNode("EQITY", nodes, sizeof(nodes) / sizeof(nodes[0]), "");}}
+    | expr EQ expr     {{TreeNode* nodes[] = {$1, $3}; $$ = createNode("EQITY", nodes, sizeof(nodes) / sizeof(nodes[0]), "");}}
     | expr NEQ expr        {{TreeNode* nodes[] = {$1, $3}; $$ = createNode("NEQ", nodes, sizeof(nodes) / sizeof(nodes[0]), "");}}
     | expr LT expr        {{TreeNode* nodes[] = {$1, $3}; $$ = createNode("LT", nodes, sizeof(nodes) / sizeof(nodes[0]), "");}}
     | expr GT expr     {{TreeNode* nodes[] = {$1, $3}; $$ = createNode("GT", nodes, sizeof(nodes) / sizeof(nodes[0]), "");}}
@@ -198,6 +202,4 @@ exprList: exprListItems  {{TreeNode* nodes[] = {$1}; $$ = createNode("exprList",
 
 exprListItems: expr COMMA exprListItems {{TreeNode* nodes[] = {$1, $3}; $$ = createNode("exprListItems", nodes, sizeof(nodes) / sizeof(nodes[0]), "");}}
     | expr {{TreeNode* nodes[] = {$1}; $$ = createNode("exprListItems", nodes, sizeof(nodes) / sizeof(nodes[0]), "");}};
-
-variable: typeRef expr EQ expr SEMICOLON {{TreeNode* nodes[] = {$1, $2, $4}; $$ = createNode("variable", nodes, sizeof(nodes) / sizeof(nodes[0]), "");}};
 %%
