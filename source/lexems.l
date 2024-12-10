@@ -191,8 +191,11 @@
 ")"                                 {
  return RPAREN;
  }
-"="                                 {
+"=="                                 {
  return EQ;
+ }
+"="                                 {
+ return ASSIGN;
  }
 [a-zA-Z_][a-zA-Z_0-9]* {
     yylval.node = createNode("IDENTIFIER", NULL, 0, yytext);

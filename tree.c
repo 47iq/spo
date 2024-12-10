@@ -14,8 +14,22 @@ TreeNode *createNode(char *type, TreeNode **childrenInfo, int childrenQty, char 
     for (int i = 0; i < childrenQty; i++) {
         children[i] = childrenInfo[i];
     }
-    node->children = children;
-    node->childrenQty = childrenQty;
+    int realQty = 0;
+    for (int i = 0; i < childrenQty; i++) {
+        if (children[i]) {
+            realQty++;
+        }
+    }
+    TreeNode **realChildren = malloc(sizeof(TreeNode*) * realQty);
+    for (int i = 0, j = 0; i < childrenQty; i++) {
+        if (children[i]) {
+            realChildren[j] = children[i];
+            j++;
+        }
+    }
+    free(children);
+    node->children = realChildren;
+    node->childrenQty = realQty;
     tree[treeSize] = node;
     treeSize++;
     return node;
@@ -32,13 +46,11 @@ void printNodeVal(TreeNode *node, FILE *output_file) {
 void printChildren(TreeNode *parent, FILE *output_file) {
     for (int i = 0; i < parent->childrenQty; ++i) {
         TreeNode *child = parent->children[i];
-        if (child) {
-            printNodeVal(parent, output_file);
-            fprintf(output_file," --> ");
-            printNodeVal(child, output_file);
-            fprintf(output_file,"\n");
-            printChildren(child, output_file);
-        }
+        printNodeVal(parent, output_file);
+        fprintf(output_file," --> ");
+        printNodeVal(child, output_file);
+        fprintf(output_file,"\n");
+        printChildren(child, output_file);
     }
 }
 

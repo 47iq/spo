@@ -1,0 +1,489 @@
+#include "execution.h"
+#include <string.h>
+
+typedef struct FunCalls FunCalls;
+
+struct FunCalls {
+    Array *funCalls;
+};
+
+const int START_ARRAY_SIZE = 10;
+Array exceptions;
+int currentExecutionId = 0;
+
+ExecutionNode *executionNode(TreeNode *treeNode, ExecutionNode *nextNode,
+                             ExecutionNode *breakNode, FunCalls *funCalls);
+
+char *mallocString(char *text) {
+    char *pointer = malloc(sizeof(char) * 1024);
+    sprintf(pointer, "%s", text);
+    return pointer;
+}
+
+void addToList(Array *currentArray, void *element) {
+    void **nodes;
+    if (currentArray->size != currentArray->nextPosition) {
+        nodes = currentArray->elements;
+    } else {
+        nodes = malloc(sizeof(void *) * 2 * currentArray->size);
+        for (int i = 0; i < currentArray->size; ++i) {
+            nodes[i] = currentArray->elements[i];
+        }
+        free(currentArray->elements);
+    }
+    nodes[currentArray->nextPosition] = element;
+    currentArray->nextPosition += 1;
+}
+
+void addException(char *text) {
+    char *exception = mallocString(text);
+    addToList(&exceptions, exception);
+}
+
+Array findListItemsUtil(TreeNode *treeNode) {
+    TreeNode **nodes = malloc(sizeof(TreeNode *) * START_ARRAY_SIZE);
+    Array items = {START_ARRAY_SIZE, 0, nodes};
+
+    TreeNode *currentListNode = treeNode;
+    do {
+        if (currentListNode->childrenQty == 0) {
+            currentListNode = NULL;
+        } else if (currentListNode->childrenQty == 1) {
+            addToList(&items, currentListNode->children[0]);
+            currentListNode = NULL;
+        } else if (currentListNode->childrenQty == 2) {
+            addToList(&items, currentListNode->children[0]);
+            currentListNode = currentListNode->children[1];
+        }
+    } while (currentListNode != NULL);
+    return items;
+}
+
+TreeNode *findSourceNode(FilenameParseTree input) {
+    TreeNode **inputNodes = input.tree->tree;
+    int inputNodesSize = input.tree->size;
+    TreeNode *sourceNode = inputNodes[inputNodesSize - 1];
+    return sourceNode;
+}
+
+ExecutionNode *initExecutionNode(char *text) {
+    ExecutionNode *node = malloc(sizeof(ExecutionNode));
+    node->id = currentExecutionId++;
+    node->text = mallocString(text);
+    node->defaultBranch = NULL;
+    node->conditionalBranch = NULL;
+    node->operationTree = NULL;
+    node->printed = 0;
+    return node;
+}
+
+TreeNode *mallocTreeNode(char *type, char *value, int nodeNumber) {
+    TreeNode *node = malloc(sizeof(TreeNode));
+    node->id = currentExecutionId++;
+    if (type) {
+        node->type = mallocString(type);
+    } else {
+        node->type = NULL;
+    }
+    if (value) {
+        node->value = mallocString(value);
+    } else {
+        node->value = NULL;
+    }
+    node->children = malloc(sizeof(TreeNode *) * nodeNumber);
+    node->childrenQty = nodeNumber;
+    return node;
+}
+
+// создание блока listStatement
+ExecutionNode *executionListStatementNode(TreeNode *treeNode,
+                                          ExecutionNode *nextNode,
+                                          ExecutionNode *breakNode,
+                                          FunCalls *funCalls) {
+    ExecutionNode *tmpNextNode = nextNode;
+    if (treeNode->childrenQty == 2) {
+        tmpNextNode = executionNode(treeNode->children[1], nextNode, breakNode, funCalls);
+    }
+    ExecutionNode *node = initExecutionNode("");
+    node->defaultBranch =
+            executionNode(treeNode->children[0], tmpNextNode, breakNode, funCalls);
+    return node;
+}
+
+// для построения дерева операций
+TreeNode *operationTreeNode(TreeNode *parsingTree, FunCalls *funCalls) {
+    TreeNode *node = NULL;
+
+    if (!strcmp(parsingTree->type, "braces")) {
+        return operationTreeNode(parsingTree->children[0], funCalls);
+    } else if (!strcmp(parsingTree->type, "slice")) {
+        char sliceName[1024];
+        sprintf(sliceName,
+                "slice: %s",
+                parsingTree->children[0]->value);
+        if (parsingTree->childrenQty == 1) {
+            node = mallocTreeNode(NULL, sliceName, 1);
+            node->children[0] = operationTreeNode(parsingTree->children[0], funCalls);
+        } else {
+            Array argsArray = findListItemsUtil(parsingTree->children[1]);
+            node = mallocTreeNode(NULL, sliceName, argsArray.nextPosition + 1);
+            node->children[0] = operationTreeNode(parsingTree->children[0], funCalls);
+            for (int i = 1; i <= argsArray.nextPosition; ++i) {
+                node->children[i] = operationTreeNode(argsArray.elements[i - 1], funCalls);
+            }
+        }
+    } else if (!strcmp(parsingTree->type, "block")) {
+        return operationTreeNode(parsingTree->children[0], funCalls);
+    } else if (!strcmp(parsingTree->type, "call")) {
+        char executionName[1024];
+        sprintf(executionName,
+                "execute: %s",
+                parsingTree->children[0]->value);
+        if (parsingTree->childrenQty == 1) {
+            node = mallocTreeNode(NULL, executionName, 0);
+        } else {
+            Array argsArray = findListItemsUtil(parsingTree->children[1]->children[0]);
+            node = mallocTreeNode(NULL, executionName, argsArray.nextPosition);
+            for (int i = 0; i < argsArray.nextPosition; ++i) {
+                node->children[i] = operationTreeNode(argsArray.elements[i], funCalls);
+            }
+        }
+        char funCallOperationIdNodeString[1024];
+        sprintf(funCallOperationIdNodeString, "%d", node->id);
+        TreeNode *funCallOperationIdNode = mallocTreeNode("operationTreeId", funCallOperationIdNodeString, 1);
+        TreeNode *calledFunNameNode = mallocTreeNode("call", parsingTree->children[0]->value, 0);
+        funCallOperationIdNode->children[0] = calledFunNameNode;
+        addToList(funCalls->funCalls, funCallOperationIdNode);
+    } else if (parsingTree->childrenQty == 3) {
+        node = mallocTreeNode(parsingTree->type, parsingTree->value, parsingTree->childrenQty);
+        node->children[0] = operationTreeNode(parsingTree->children[0], funCalls);
+        node->children[1] = operationTreeNode(parsingTree->children[1], funCalls);
+        node->children[2] = operationTreeNode(parsingTree->children[2], funCalls);
+    } else if (parsingTree->childrenQty == 2) {
+        node = mallocTreeNode(parsingTree->type, parsingTree->value, parsingTree->childrenQty);
+        node->children[0] = operationTreeNode(parsingTree->children[0], funCalls);
+        node->children[1] = operationTreeNode(parsingTree->children[1], funCalls);
+    } else if (parsingTree->childrenQty == 0) {
+        if (!strcmp(parsingTree->type, "IDENTIFIER")) {
+            node = mallocTreeNode("read", NULL, 1);
+            char valuePlace[1024];
+            sprintf(valuePlace,
+                    "value place '%s'",
+                    parsingTree->value);
+            node->children[0] = mallocTreeNode(NULL, valuePlace, 0);
+        } else {
+            char constVal[1024];
+            sprintf(constVal,
+                    "const: %s",
+                    parsingTree->value);
+            node = mallocTreeNode(NULL, constVal, 0);
+        }
+    } else if (parsingTree->childrenQty == 1) {
+        node = mallocTreeNode(parsingTree->type, parsingTree->value, parsingTree->childrenQty);
+        node->children[0] = operationTreeNode(parsingTree->children[0], funCalls);
+    }
+    return node;
+}
+
+char *expressionNodeToString(TreeNode *treeNode) {
+    if (treeNode->childrenQty == 0) {
+        return mallocString(treeNode->value);
+    } else if (treeNode->childrenQty == 1) {
+        char *childStr = expressionNodeToString(treeNode->children[0]);
+        char text[1024];
+        sprintf(text,
+                "%s⟨%s⟩",
+                treeNode->type, childStr);
+        return mallocString(text);
+    } else {
+        char *childLeftStr = expressionNodeToString(treeNode->children[0]);
+        char *childRightStr = expressionNodeToString(treeNode->children[1]);
+        char text[1024];
+        sprintf(text,
+                "%s %s %s",
+                childLeftStr, treeNode->type, childRightStr);
+        return mallocString(text);
+    }
+}
+
+ExecutionNode *executionExpressionNode(TreeNode *treeNode, ExecutionNode *nextNode, FunCalls *funCalls) {
+    ExecutionNode *node = initExecutionNode(expressionNodeToString(treeNode));
+    node->operationTree = operationTreeNode(treeNode, funCalls);
+    node->defaultBranch = nextNode;
+    return node;
+}
+
+ExecutionNode *executionElseNode(TreeNode *treeNode, ExecutionNode *nextNode,
+                                 ExecutionNode *breakNode, FunCalls *funCalls) {
+    ExecutionNode *node = initExecutionNode("");
+    if (treeNode->childrenQty == 1) {
+        node->defaultBranch = executionNode(treeNode->children[0],
+                                         nextNode, breakNode, funCalls);
+    } else {
+        node->defaultBranch = nextNode;
+    }
+    return node;
+}
+
+ExecutionNode *executionIfNode(TreeNode *treeNode, ExecutionNode *nextNode,
+                               ExecutionNode *breakNode, FunCalls *funCalls) {
+    ExecutionNode *node = initExecutionNode("");
+    TreeNode *elseTreeNode = NULL;
+    TreeNode *ifStatements = NULL;
+    if (treeNode->childrenQty == 3) {
+        ifStatements = treeNode->children[1];
+        elseTreeNode = treeNode->children[2];
+    } else if (treeNode->childrenQty == 2 &&
+               !strcmp(treeNode->children[1]->type, "else")) {
+        elseTreeNode = treeNode->children[1];
+    } else if (treeNode->childrenQty == 2) {
+        ifStatements = treeNode->children[1];
+    }
+
+    ExecutionNode *conditionNextNode = NULL;
+    ExecutionNode *conditionConditionallyNode = NULL;
+    if (elseTreeNode != NULL) {
+        ExecutionNode *elseNode =
+                executionElseNode(elseTreeNode, nextNode, breakNode, funCalls);
+        conditionNextNode = elseNode;
+    } else {
+        conditionNextNode = nextNode;
+    }
+    if (ifStatements != NULL) {
+        ExecutionNode *statementsNode =
+                executionNode(ifStatements, nextNode, breakNode, funCalls);
+        conditionConditionallyNode = statementsNode;
+    }
+    ExecutionNode *conditionNode = executionExpressionNode(treeNode->children[0], conditionNextNode, funCalls);
+    node->defaultBranch = conditionNode;
+    conditionNode->conditionalBranch = conditionConditionallyNode;
+    return node;
+}
+
+ExecutionNode *executionLoopNode(TreeNode *treeNode, ExecutionNode *nextNode,
+                                 ExecutionNode *breakNode, FunCalls *funCalls) {
+    ExecutionNode *node = initExecutionNode("");
+    ExecutionNode *statementNode = NULL;
+    if (treeNode->childrenQty == 2) {
+        statementNode = executionNode(treeNode->children[1], node, nextNode, funCalls);
+    } else {
+        statementNode = initExecutionNode("");
+        statementNode->defaultBranch = node;
+    }
+    ExecutionNode *conditionNode = executionExpressionNode(treeNode->children[0], nextNode, funCalls);
+    node->defaultBranch = conditionNode;
+    conditionNode->conditionalBranch = statementNode;
+    return node;
+}
+
+ExecutionNode *executionRepeatNode(TreeNode *treeNode, ExecutionNode *nextNode, FunCalls *funCalls) {
+    ExecutionNode *node = initExecutionNode("");
+    ExecutionNode *conditionNode = executionExpressionNode(treeNode->children[0], nextNode, funCalls);
+    conditionNode->conditionalBranch = node;
+    ExecutionNode *statementNode = NULL;
+    if (treeNode->childrenQty == 2) {
+        statementNode = executionNode(treeNode->children[1], conditionNode, nextNode, funCalls);
+    } else {
+        statementNode = initExecutionNode("");
+        statementNode->defaultBranch = conditionNode;
+    }
+    node->defaultBranch = statementNode;
+    return node;
+}
+
+ExecutionNode *executionBreakNode(TreeNode *treeNode, ExecutionNode *nextNode,
+                                  ExecutionNode *breakNode) {
+    ExecutionNode *node = initExecutionNode("");
+    if (breakNode == NULL) {
+        char exceptionText[1024];
+        sprintf(exceptionText,
+                "Exception: BREAK outside loop for tree node id --> %d",
+                treeNode[0].id);
+        addException(exceptionText);
+        ExecutionNode *exceptionNode = initExecutionNode(exceptionText);
+        node->defaultBranch = exceptionNode;
+        exceptionNode->defaultBranch = nextNode;
+    } else {
+        node->defaultBranch = breakNode;
+    }
+    return node;
+}
+
+ExecutionNode *executionBlockNode(TreeNode *treeNode, ExecutionNode *nextNode,
+                                  ExecutionNode *breakNode, FunCalls *funCalls) {
+    return executionNode(treeNode->children[0],
+                         nextNode, breakNode, funCalls);
+}
+
+// созадние блока
+ExecutionNode *executionNode(TreeNode *treeNode, ExecutionNode *nextNode,
+                             ExecutionNode *breakNode, FunCalls *funCalls) {
+    if (!strcmp(treeNode[0].type, "statementList")) {
+        return executionListStatementNode(treeNode, nextNode, breakNode, funCalls);
+    } else if (!strcmp(treeNode[0].type, "if")) {
+        return executionIfNode(treeNode, nextNode, breakNode, funCalls);
+    } else if (!strcmp(treeNode[0].type, "loop")) {
+        return executionLoopNode(treeNode, nextNode, breakNode, funCalls);
+    } else if (!strcmp(treeNode[0].type, "repeat")) {
+        return executionRepeatNode(treeNode, nextNode, funCalls);
+    } else if (!strcmp(treeNode[0].type, "break")) {
+        return executionBreakNode(treeNode, nextNode, breakNode);
+    } else if (!strcmp(treeNode[0].type, "block")) {
+        return executionBlockNode(treeNode, nextNode, breakNode, funCalls);
+    } else {
+        return executionExpressionNode(treeNode, nextNode, funCalls);
+    }
+}
+
+ExecutionNode *initGraph(TreeNode *sourceItem, FunCalls *funCalls) {
+    ExecutionNode *startNode = initExecutionNode("START");
+    ExecutionNode *endNode = initExecutionNode("FINISH");
+    TreeNode *funcDef = sourceItem;
+    if (funcDef->childrenQty == 2) {
+        ExecutionNode *listStatementNode =
+                executionNode(funcDef->children[1], endNode, NULL, funCalls);
+        startNode->defaultBranch = listStatementNode;
+    } else {
+        startNode->defaultBranch = endNode;
+    }
+    return startNode;
+}
+
+void initExceptions() {
+    void **nodes = malloc(sizeof(char *) * START_ARRAY_SIZE);
+    exceptions = (Array) {START_ARRAY_SIZE, 0, nodes};
+}
+
+Array *executionGraph(FilenameParseTree *input, int size) {
+    void **resultNodes = malloc(sizeof(FunExecution *) * START_ARRAY_SIZE);
+    Array *result = malloc(sizeof(Array));
+    result->size = START_ARRAY_SIZE;
+    result->nextPosition = 0;
+    result->elements = resultNodes;
+
+    for (int i = 0; i < size; ++i) {
+        initExceptions();
+        TreeNode *sourceNode = findSourceNode(input[i]);
+        Array sourceItems;
+        if (sourceNode->childrenQty != 0) {
+            TreeNode *sourceItemsList = sourceNode->children[0];
+            sourceItems = findListItemsUtil(sourceItemsList);
+        } else {
+            sourceItems = (Array) {0, 0, NULL};
+        }
+        for (int j = 0; j < sourceItems.nextPosition; ++j) {
+            FunExecution *currentFunExecution = malloc(sizeof(FunExecution));
+            TreeNode **currentSourceItemElements =
+                    ((TreeNode **) sourceItems.elements);
+            currentFunExecution->name =
+                    currentSourceItemElements[j]->children[0]->value;
+
+            void **nodes = malloc(sizeof(TreeNode *) * START_ARRAY_SIZE);
+            Array funs = (Array) {START_ARRAY_SIZE, 0, nodes};
+            FunCalls funCalls = (FunCalls) {&funs};
+            currentFunExecution->nodes = initGraph(currentSourceItemElements[j], &funCalls);
+            TreeNode *funCallsRoot = mallocTreeNode("currentFunction", currentFunExecution->name,
+                                                    funCalls.funCalls->nextPosition);
+            for (int k = 0; k < funCalls.funCalls->nextPosition; ++k) {
+                funCallsRoot->children[k] = funCalls.funCalls->elements[k];
+            }
+            currentFunExecution->funCalls = funCallsRoot;
+            currentFunExecution->errorsCount = exceptions.nextPosition;
+            currentFunExecution->errors = (char **) exceptions.elements;
+            addToList(result, currentFunExecution);
+        }
+    }
+    return result;
+}
+
+void printNode(TreeNode *node, FILE *outputFile) {
+    if (node == NULL) {
+        return;
+    }
+    int childrenNumber = node->childrenQty;
+    for (int i = 0; i < childrenNumber; ++i) {
+        printNode(node->children[i], outputFile);
+        fprintf(outputFile, "node%d", node->id);
+        fprintf(outputFile, "([");
+        int typeExists = 0;
+        if (node->type != NULL && strlen(node->type) > 0) {
+            fprintf(outputFile, "Type: %s", node->type);
+            typeExists = 1;
+        }
+        if (node->value != NULL && strlen(node->value) > 0) {
+            if (typeExists) {
+                fprintf(outputFile, ", ", node->value);
+            }
+            fprintf(outputFile, "Value: %s", node->value);
+        }
+        fprintf(outputFile, "])");
+
+        TreeNode *childNode = node->children[i];
+        fprintf(outputFile, " --> ");
+        fprintf(outputFile, "node%d", childNode->id);
+        fprintf(outputFile, "([");
+        typeExists = 0;
+        if (childNode->type != NULL && strlen(childNode->type) > 0) {
+            fprintf(outputFile, "Type: %s", childNode->type);
+            typeExists = 1;
+        }
+        if (childNode->value != NULL && strlen(childNode->value) > 0) {
+            if (typeExists) {
+                fprintf(outputFile, ", ");
+            }
+            fprintf(outputFile, "Value: %s", childNode->value);
+        }
+        fprintf(outputFile, "])");
+        fprintf(outputFile, "\n");
+    }
+}
+
+void printExecutionNode(ExecutionNode *father, ExecutionNode *child, FILE *outputFile, char *relationName) {
+    fprintf(outputFile, "node%d", father->id);
+    fprintf(outputFile, "([");
+    fprintf(outputFile, "Text: %s", father->text);
+    fprintf(outputFile, "])");
+    fprintf(outputFile, " --%s--> ", relationName);
+    fprintf(outputFile, "node%d", child->id);
+    fprintf(outputFile, "([");
+    fprintf(outputFile, "Text: %s", child->text);
+    fprintf(outputFile, "])");
+    fprintf(outputFile, "\n");
+}
+
+void printExecutionGraphNodeToFile(ExecutionNode *executionNode, FILE *outputOperationTreesFile,
+                                   FILE *outputExecutionFile) {
+    if (executionNode->printed) {
+        return;
+    } else {
+        executionNode->printed = 1;
+    }
+
+    if (executionNode->operationTree) {
+        char linkedExecutionNodeId[1024];
+        sprintf(linkedExecutionNodeId, "%d", executionNode->id);
+        TreeNode *linkedExecutionNode = mallocTreeNode("linked execution node id", linkedExecutionNodeId, 1);
+        linkedExecutionNode->children[0] = executionNode->operationTree;
+        printNode(linkedExecutionNode, outputOperationTreesFile);
+    }
+
+    ExecutionNode *defaultBranch = executionNode->defaultBranch;
+    if (defaultBranch) {
+        printExecutionGraphNodeToFile(defaultBranch, outputOperationTreesFile, outputExecutionFile);
+
+        printExecutionNode(executionNode, defaultBranch, outputExecutionFile, "defaultBranch");
+    }
+
+    ExecutionNode *conditionalBranch = executionNode->conditionalBranch;
+    if (conditionalBranch) {
+        printExecutionGraphNodeToFile(conditionalBranch, outputOperationTreesFile, outputExecutionFile);
+
+        printExecutionNode(executionNode, conditionalBranch, outputExecutionFile, "conditionalBranch");
+    }
+}
+
+void printExecution(FunExecution *funExecution, FILE *outputFunCallFile, FILE *outputOperationTreesFile,
+                    FILE *outputExecutionFile) {
+    printNode(funExecution->funCalls, outputFunCallFile);
+    printExecutionGraphNodeToFile(funExecution->nodes, outputOperationTreesFile, outputExecutionFile);
+}
