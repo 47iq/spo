@@ -16,4 +16,6 @@ add_executable(SPO_Lab1 main.c
         parser.h
         graph/execution.c
         graph/execution.h
+        graph/utils.c
+        graph/utils.h
 )
