@@ -315,7 +315,6 @@ ExecutionNode *executionBlockNode(TreeNode *treeNode, ExecutionNode *nextNode,
                          nextNode, breakNode, funCalls);
 }
 
-// созадние блока
 ExecutionNode *executionNode(TreeNode *treeNode, ExecutionNode *nextNode,
                              ExecutionNode *breakNode, FunCalls *funCalls) {
     if (!strcmp(treeNode[0].type, "statementList")) {
@@ -337,7 +336,7 @@ ExecutionNode *executionNode(TreeNode *treeNode, ExecutionNode *nextNode,
 
 ExecutionNode *initGraph(TreeNode *sourceItem, FunCalls *funCalls) {
     ExecutionNode *startNode = initExecutionNode("START");
-    ExecutionNode *endNode = initExecutionNode("FINISH");
+    ExecutionNode *endNode = initExecutionNode("END");
     TreeNode *funcDef = sourceItem;
     if (funcDef->childrenQty == 2) {
         ExecutionNode *listStatementNode =
