@@ -30,7 +30,7 @@ TreeNode *findSourceNode(FilenameParseTree input) {
 ExecutionNode *initExecutionNode(char *text) {
     ExecutionNode *node = malloc(sizeof(ExecutionNode));
     node->id = currentExecutionId++;
-    node->text = mallocString(text);
+    node->desc = mallocString(text);
     node->defaultBranch = NULL;
     node->conditionalBranch = NULL;
     node->operationTree = NULL;
@@ -313,7 +313,7 @@ void initExceptions() {
 }
 
 Array *executionGraph(FilenameParseTree *input, int size) {
-    void **resultNodes = malloc(sizeof(FunExecution *) * START_ARRAY_SIZE);
+    void **resultNodes = malloc(sizeof(ExecutionInfo *) * START_ARRAY_SIZE);
     Array *result = malloc(sizeof(Array));
     result->size = START_ARRAY_SIZE;
     result->nextPosition = 0;
@@ -330,11 +330,14 @@ Array *executionGraph(FilenameParseTree *input, int size) {
             sourceItems = (Array) {0, 0, NULL};
         }
         for (int j = 0; j < sourceItems.nextPosition; ++j) {
-            FunExecution *currentFunExecution = malloc(sizeof(FunExecution));
+            ExecutionInfo *currentFunExecution = malloc(sizeof(ExecutionInfo));
+            currentFunExecution->filename = input[i].filename;
             TreeNode **currentSourceItemElements =
                     ((TreeNode **) sourceItems.elements);
             currentFunExecution->name =
                     currentSourceItemElements[j]->children[0]->value;
+            currentFunExecution->funcSignature =
+                    currentSourceItemElements[j]->children[0];
 
             void **nodes = malloc(sizeof(TreeNode *) * START_ARRAY_SIZE);
             Array funs = (Array) {START_ARRAY_SIZE, 0, nodes};
@@ -399,12 +402,12 @@ void printNode(TreeNode *node, FILE *outputFile) {
 void printExecutionNode(ExecutionNode *father, ExecutionNode *child, FILE *outputFile, char *relationName) {
     fprintf(outputFile, "node%d", father->id);
     fprintf(outputFile, "([");
-    fprintf(outputFile, "Text: %s", father->text);
+    fprintf(outputFile, "Text: %s", father->desc);
     fprintf(outputFile, "])");
     fprintf(outputFile, " --%s--> ", relationName);
     fprintf(outputFile, "node%d", child->id);
     fprintf(outputFile, "([");
-    fprintf(outputFile, "Text: %s", child->text);
+    fprintf(outputFile, "Text: %s", child->desc);
     fprintf(outputFile, "])");
     fprintf(outputFile, "\n");
 }
@@ -440,7 +443,7 @@ void printExecutionGraphNodeToFile(ExecutionNode *executionNode, FILE *outputOpe
     }
 }
 
-void printExecution(FunExecution *funExecution, FILE *outputFunCallFile, FILE *outputOperationTreesFile,
+void printExecution(ExecutionInfo *funExecution, FILE *outputFunCallFile, FILE *outputOperationTreesFile,
                     FILE *outputExecutionFile) {
     printNode(funExecution->funCalls, outputFunCallFile);
     printExecutionGraphNodeToFile(funExecution->nodes, outputOperationTreesFile, outputExecutionFile);

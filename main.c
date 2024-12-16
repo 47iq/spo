@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
                 fprintf(stderr, "%s", result->errors[j]);
             }
             for (int j = 0; j < executionRes->nextPosition; ++j) {
-                FunExecution *funExecution = executionRes->elements[j];
+                ExecutionInfo *funExecution = executionRes->elements[j];
                 for (int k = 0; k < funExecution->errorsCount; ++k) {
                     fprintf(stderr, "%s", funExecution->errors[k]);
                 }
@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
             fprintf(outputFunCallFile, "flowchart TB\n");
 
             for (int j = 0; j < executionRes->nextPosition; ++j) {
-                FunExecution *funExecution = executionRes->elements[j];
+                ExecutionInfo *funExecution = executionRes->elements[j];
                 printExecution(funExecution, outputFunCallFile, outputOperationTreesFile, outputExecutionFile);
             }
 
