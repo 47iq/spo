@@ -96,7 +96,7 @@ TreeNode *operationTreeNode(TreeNode *parsingTree, FunCalls *funCalls) {
     } else if (!strcmp(parsingTree->type, "call")) {
         char executionName[1024];
         sprintf(executionName,
-                "execute: %s",
+                "call: %s",
                 parsingTree->children[0]->value);
         if (parsingTree->childrenQty == 1) {
             node = mallocTreeNode(NULL, executionName, 0);
@@ -343,7 +343,7 @@ Array *executionGraph(FilenameParseTree *input, int size) {
             Array funs = (Array) {START_ARRAY_SIZE, 0, nodes};
             FunCalls funCalls = (FunCalls) {&funs};
             currentFunExecution->nodes = initGraph(currentSourceItemElements[j], &funCalls);
-            TreeNode *funCallsRoot = mallocTreeNode("currentFunction", currentFunExecution->name,
+            TreeNode *funCallsRoot = mallocTreeNode("function", currentFunExecution->name,
                                                     funCalls.funCalls->nextPosition);
             for (int k = 0; k < funCalls.funCalls->nextPosition; ++k) {
                 funCallsRoot->children[k] = funCalls.funCalls->elements[k];
