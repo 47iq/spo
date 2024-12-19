@@ -8,7 +8,7 @@ struct FunCalls {
     Array *funCalls;
 };
 
-const int START_ARRAY_SIZE = 10;
+const int START_ARRAY_SIZE = 1000;
 Array exceptions;
 int currentExecutionId = 0;
 
