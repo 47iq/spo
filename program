@@ -1,0 +1,11 @@
+[section data_ram]
+val1: dw 0x0
+val2: dw 0x0
+[section code_ram]
+MOV R0, 111
+ST R0, val1
+LD OUT, val1
+MOV R1, 113
+ST R1, val2
+LD OUT, val2
+HLT

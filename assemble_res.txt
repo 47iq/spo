@@ -1,0 +1,1 @@
+Error: Could not find file "/home/iq47/CLionProjects/spo/out.asm"
