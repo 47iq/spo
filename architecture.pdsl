@@ -1,27 +1,21 @@
 architecture spo {
 
 registers:
-	storage r0st [16];
-	storage r1st [16];
-	storage r2st [16];
-	storage r3st [16];
-	storage ip [16];
-	storage spst [16];
-	storage fpst [16];
+	storage R0_STORAGE [16];        // регистр общего назначения 0
+	storage R1_STORAGE [16];        // регистр общего назначения 1
+	storage IP [16];                // указатель на инструкцию
+	storage SP_STORAGE [16];        // указатель на стек
+	storage FP_STORAGE [16];        // указатель на фрейм
+	storage IN_STORAGE [8];         // регистр для ввода
+	storage OUT_STORAGE [8];        // регистр для вывода
 
-	storage inp [8];
-	storage outp [8];
-
-    view inReg = inp;
-    view outReg = outp;
-	view r0 = r0st;
-	view r1 = r1st;
-	view r2 = r2st;
-	view r3 = r3st;
-	view ipv = ip;
-	view sp = spst;
-	view fp = fpst;
-
+	view R0 = R0_STORAGE;
+	view R1 = R1_STORAGE;
+	view IPV = IP;
+	view SP = SP_STORAGE;
+	view FP = FP_STORAGE;
+    view IN = IN_STORAGE;
+    view OUT = OUT_STORAGE;
 
 memory:
 
@@ -54,163 +48,161 @@ instructions:
 	encode imm16 field = immediate [16];
 
 	encode reg field = register {
-		r0 = 0000,
-		r1 = 0001,
-		r2 = 0010,
-		r3 = 0011,
-		ipv = 0100,
-		sp = 0101,
-		fp = 0110,
-		inReg = 0111,
-		outReg = 1000
+		R0 = 0000,
+		R1 = 0001,
+		IPV = 0100,
+		SP = 0101,
+		FP = 0110,
+		IN = 0111,
+		OUT = 1000
 	};
 
-	instruction add-reg2reg = { 0000 0000, reg as op1, reg as op2, 0000 0000 0000 0000} {
+	instruction add_register = { 0000 0000, reg as op1, reg as op2, 0000 0000 0000 0000} {
         op1 = op1 + op2;
-        ip = ip + 4;
+        IP = IP + 4;
     };
 
-	instruction add-imm2reg = { 0000 0001, reg as op1, imm16 as op2, 0000} {
+	instruction add_const = { 0000 0001, reg as op1, imm16 as op2, 0000} {
 		op1 = op1 + op2;
-		ip = ip + 4;
+		IP = IP + 4;
 	};
 
-	instruction sub-reg2reg = { 0000 0010, reg as op1, reg as op2, 0000 0000 0000 0000} {
+	instruction sub_register = { 0000 0010, reg as op1, reg as op2, 0000 0000 0000 0000} {
 		op1 = op1 - op2;
-		ip = ip + 4;
+		IP = IP + 4;
 	};
 
-	instruction sub-imm2reg = { 0000 0011, reg as op1, imm16 as op2, 0000} {
+	instruction sub_const = { 0000 0011, reg as op1, imm16 as op2, 0000} {
 		op1 = op1 - op2;
-		ip = ip + 4;
+		IP = IP + 4;
 	};
 
 	instruction asl = { 0000 0100, reg as op1, reg as op2, 0000 0000 0000 0000 } {
 		op1 = op2 << 1;
-		ip = ip + 4;
+		IP = IP + 4;
 	};
 
 	instruction asr = { 0000 0101, reg as op1, reg as op2, 0000 0000 0000 0000 } {
 		op1 = op2 >> 1;
-		ip = ip + 4;
+		IP = IP + 4;
 	};
 
-    instruction mov-reg2reg = { 0000 0110, reg as op1, reg as op2, 0000 0000 0000 0000 } {
+    instruction mov_register = { 0000 0110, reg as op1, reg as op2, 0000 0000 0000 0000 } {
         op1 = op2;
-        ip = ip + 4;
+        IP = IP + 4;
     };
 
-    instruction mov-imm2reg = { 0000 0111, reg as op1, imm16 as op2, 0000 } {
+    instruction mov_const = { 0000 0111, reg as op1, imm16 as op2, 0000 } {
         op1 = op2;
-        ip = ip + 4;
+        IP = IP + 4;
     };
 
     instruction invert = { 0000 1000, reg as op1, reg as op2, 0000 0000 0000 0000 } {
         op1 = !op2;
-        ip = ip + 4;
+        IP = IP + 4;
     };
 
     instruction negative = { 0000 1001, reg as op1, reg as op2, 0000 0000 0000 0000 } {
         op1 = -op2;
-        ip = ip + 4;
+        IP = IP + 4;
     };
 
-	instruction and-reg2reg = { 0000 1010, reg as op1, reg as op2, 0000 0000 0000 0000} {
+	instruction and_register = { 0000 1010, reg as op1, reg as op2, 0000 0000 0000 0000} {
 		op1 = op1 && op2;
-		ip = ip + 4;
+		IP = IP + 4;
 	};
 
-	instruction and-imm2reg = { 0000 1011, reg as op1, imm16 as op2, 0000} {
+	instruction and_const = { 0000 1011, reg as op1, imm16 as op2, 0000} {
 		op1 = op1 & op2;
-		ip = ip + 4;
+		IP = IP + 4;
 	};
 
-    instruction or-reg2reg = { 0000 1100, reg as op1, reg as op2, 0000 0000 0000 0000} {
+    instruction or_register = { 0000 1100, reg as op1, reg as op2, 0000 0000 0000 0000} {
         op1 = op1 | op2;
-        ip = ip + 4;
+        IP = IP + 4;
     };
 
-    instruction or-imm2reg = { 0000 1101, reg as op1, imm16 as op2, 0000} {
+    instruction or_const = { 0000 1101, reg as op1, imm16 as op2, 0000} {
         op1 = op1 | op2;
-        ip = ip + 4;
+        IP = IP + 4;
     };
-    instruction div-reg2reg = { 0000 1110, reg as op1, reg as op2, 0000 0000 0000 0000} {
+    instruction div_register = { 0000 1110, reg as op1, reg as op2, 0000 0000 0000 0000} {
         op1 = op1 / op2;
-        ip = ip + 4;
+        IP = IP + 4;
     };
 
-    instruction div-imm2reg = { 0000 1111, reg as op1, imm16 as op2, 0000} {
+    instruction div_const = { 0000 1111, reg as op1, imm16 as op2, 0000} {
         op1 = op1 / op2;
-        ip = ip + 4;
+        IP = IP + 4;
     };
-    instruction mul-reg2reg = { 0001 0000, reg as op1, reg as op2, 0000 0000 0000 0000} {
+    instruction mul_register = { 0001 0000, reg as op1, reg as op2, 0000 0000 0000 0000} {
         op1 = op1 * op2;
-        ip = ip + 4;
+        IP = IP + 4;
     };
 
-    instruction mul-imm2reg = { 0001 0001, reg as op1, imm16 as op2, 0000} {
+    instruction mul_const = { 0001 0001, reg as op1, imm16 as op2, 0000} {
         op1 = op1 * op2;
-        ip = ip + 4;
+        IP = IP + 4;
     };
 
-    instruction rem-reg2reg = { 0001 0010, reg as op1, reg as op2, 0000 0000 0000 0000} {
+    instruction rem_register = { 0001 0010, reg as op1, reg as op2, 0000 0000 0000 0000} {
         op1 = op1 % op2;
-        ip = ip + 4;
+        IP = IP + 4;
     };
 
-    instruction rem-imm2reg = { 0001 0011, reg as op1, imm16 as op2, 0000} {
+    instruction rem_const = { 0001 0011, reg as op1, imm16 as op2, 0000} {
         op1 = op1 % op2;
-        ip = ip + 4;
+        IP = IP + 4;
     };
 
     instruction jump = { 0001 0100, imm16 as op1, 0000 0000} {
-        ip = op1;
+        IP = op1;
     };
 
     instruction jumpeq = { 0001 0101, reg as op1, imm16 as op2, 0000} {
         if op1 == 0x0 then
         {
-            ip = op2;
+            IP = op2;
         }
         else
         {
-            ip = ip + 4;
+            IP = IP + 4;
         }
     };
     instruction jumpgt = { 0001 0110, reg as op1, imm16 as op2, 0000} {
        if (op1 >> 15 == 0x0) && (op1 != 0x0) then
        {
-           ip = op2;
+           IP = op2;
        }
        else
        {
-           ip = ip + 4;
+           IP = IP + 4;
        }
     };
     instruction jumpge = { 0001 0111, reg as op1, imm16 as op2, 0000} {
         if (op1 >> 15 == 0x0) then
         {
-           ip = op2;
+           IP = op2;
         }
         else
         {
-           ip = ip + 4;
+           IP = IP + 4;
         }
     };
     instruction jumplt = { 0001 1000, reg as op1, imm16 as op2, 0000} {
         if op1 >> 15 == 0x1 then // op1 < 0
-            ip = op2;
+            IP = op2;
         else
-            ip = ip + 4;
+            IP = IP + 4;
     };
     instruction jumple = { 0001 1001, reg as op1, imm16 as op2, 0000} {
        if (op1 >> 15 == 0x1) || (op1 == 0x0) then // op1 <= 0
        {
-           ip = op2;
+           IP = op2;
        }
        else
        {
-           ip = ip + 4;
+           IP = IP + 4;
        }
     };
 
@@ -224,89 +216,89 @@ instructions:
 		data_ram:1[op2] = op1;
 		data_ram:1[op2+1] = op1>>8;
 
-		ip = ip + 4;
+		IP = IP + 4;
 	};
 
 	instruction ld = { 0001 1011, reg as op1, imm16 as op2, 0000 } {
 		op1 = data_ram:1[op2] + (data_ram:1[op2+1] << 8);
 
-		ip = ip + 4;
+		IP = IP + 4;
 	};
     instruction push = { 0001 1100, reg as op1, 0000 0000 0000 0000 0000 } {
-        sp = sp - 2;
-        stack_ram:1[sp] = op1;
-        stack_ram:1[sp+1] = op1 >> 8;
-		ip = ip + 4;
+        SP = SP - 2;
+        stack_ram:1[SP] = op1;
+        stack_ram:1[SP+1] = op1 >> 8;
+		IP = IP + 4;
     };
     instruction pop = { 0001 1101, reg as op1, 0000 0000 0000 0000 0000 } {
-        op1 = stack_ram:1[sp] + (stack_ram:1[sp+1] << 8);
-        sp = sp + 2;
-		ip = ip + 4;
+        op1 = stack_ram:1[SP] + (stack_ram:1[SP+1] << 8);
+        SP = SP + 2;
+		IP = IP + 4;
     };
 
     instruction call = { 0001 1110, imm16 as op1, 0000 0000 } {
-        sp = sp - 2;
-        data_ram:1[sp] = ip;
-        data_ram:1[sp+1] = ip >> 8;
-        sp = sp - 2;
-        data_ram:1[sp] = fp;
-        data_ram:1[sp+1] = fp >> 8;
-        fp = sp;
-        ip = op1;
+        SP = SP - 2;
+        data_ram:1[SP] = IP;
+        data_ram:1[SP+1] = IP >> 8;
+        SP = SP - 2;
+        data_ram:1[SP] = FP;
+        data_ram:1[SP+1] = FP >> 8;
+        FP = SP;
+        IP = op1;
     };
     instruction ret = { 0001 1111 1111 1111 1111 1111 0000 0000 } {
-        if fp != 0 then {
-            sp = fp;
-            fp = data_ram:1[sp] + (data_ram:1[sp+1] << 8);
-            sp = sp + 2;
-            ip = data_ram:1[sp] + (data_ram:1[sp+1] << 8);
-            sp = sp + 2;
+        if FP != 0 then {
+            SP = FP;
+            FP = data_ram:1[SP] + (data_ram:1[SP+1] << 8);
+            SP = SP + 2;
+            IP = data_ram:1[SP] + (data_ram:1[SP+1] << 8);
+            SP = SP + 2;
         }
 
-        ip = ip + 4;
+        IP = IP + 4;
     };
 	instruction hlt = { 1111 1111 1111 1111 1111 1111 1111 1111 } {
 	};
 
 mnemonics:
 
-	mnemonic hlt();
-    mnemonic ret();
+	mnemonic HLT for hlt();
+    mnemonic RET for ret();
 
 	format plain1 is "{1}";
 	format plain2 is "{1}, {2}";
 
-	mnemonic store for st(op1, op2) plain2;
-	mnemonic load for ld(op1, op2) plain2;
+	mnemonic ST for st(op1, op2) plain2;
+	mnemonic LD for ld(op1, op2) plain2;
 
-    mnemonic call for call(op1) plain1;
-    mnemonic jump for jump(op1) plain1;
-    mnemonic push for push(op1) plain1;
-    mnemonic pop for pop(op1) plain1;
+    mnemonic CALL for call(op1) plain1;
+    mnemonic JUMP for jump(op1) plain1;
+    mnemonic PUSH for push(op1) plain1;
+    mnemonic POP for pop(op1) plain1;
 
-    mnemonic neg for negative (op1, op2) plain2;
-    mnemonic _not for invert (op1, op2) plain2;
+    mnemonic NEG for negative (op1, op2) plain2;
+    mnemonic NOT for invert (op1, op2) plain2;
 
-	mnemonic add for add-reg2reg (op1, op2) plain2,
-				 for add-imm2reg (op1, op2) plain2;
-	mnemonic sub for sub-reg2reg (op1, op2) plain2,
-				 for sub-imm2reg (op1, op2) plain2;
-	mnemonic mov for mov-reg2reg (op1, op2) plain2,
-				 for mov-imm2reg (op1, op2) plain2;
-	mnemonic _and for and-reg2reg (op1, op2) plain2,
-				 for and-imm2reg (op1, op2) plain2;
-	mnemonic _or for or-reg2reg (op1, op2) plain2,
-				 for or-imm2reg (op1, op2) plain2;
-	mnemonic mul for mul-reg2reg (op1, op2) plain2,
-				 for mul-imm2reg (op1, op2) plain2;
-	mnemonic div for div-reg2reg (op1, op2) plain2,
-				 for div-imm2reg (op1, op2) plain2;
-	mnemonic rem for rem-reg2reg (op1, op2) plain2,
-				 for rem-imm2reg (op1, op2) plain2;
+	mnemonic ADD for add_register (op1, op2) plain2,
+				 for add_const (op1, op2) plain2;
+	mnemonic SUB for sub_register (op1, op2) plain2,
+				 for sub_const (op1, op2) plain2;
+	mnemonic MOV for mov_register (op1, op2) plain2,
+				 for mov_const (op1, op2) plain2;
+	mnemonic AND for and_register (op1, op2) plain2,
+				 for and_const (op1, op2) plain2;
+	mnemonic OR for or_register (op1, op2) plain2,
+				 for or_const (op1, op2) plain2;
+	mnemonic MUL for mul_register (op1, op2) plain2,
+				 for mul_const (op1, op2) plain2;
+	mnemonic DIV for div_register (op1, op2) plain2,
+				 for div_const (op1, op2) plain2;
+	mnemonic REM for rem_register (op1, op2) plain2,
+				 for rem_const (op1, op2) plain2;
 
-    mnemonic jumpeq for jumpeq(op1, op2) plain2;
-    mnemonic jumpgt for jumpgt(op1, op2) plain2;
-    mnemonic jumpge for jumpge(op1, op2) plain2;
-    mnemonic jumplt for jumplt(op1, op2) plain2;
-    mnemonic jumple for jumple(op1, op2) plain2;
+    mnemonic JE for jumpeq(op1, op2) plain2;
+    mnemonic JGT for jumpgt(op1, op2) plain2;
+    mnemonic JGE for jumpge(op1, op2) plain2;
+    mnemonic JLT for jumplt(op1, op2) plain2;
+    mnemonic JLE for jumple(op1, op2) plain2;
 }
