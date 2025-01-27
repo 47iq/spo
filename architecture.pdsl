@@ -70,7 +70,7 @@ instructions:
         ip = ip + 4;
     };
 
-	instruction add-imm2reg = { 0000 0001, reg as op1, imm16 as op2, 0000 0000 0000} {
+	instruction add-imm2reg = { 0000 0001, reg as op1, imm16 as op2, 0000} {
 		op1 = op1 + op2;
 		ip = ip + 4;
 	};
@@ -80,7 +80,7 @@ instructions:
 		ip = ip + 4;
 	};
 
-	instruction sub-imm2reg = { 0000 0011, reg as op1, imm16 as op2, 0000 0000 0000} {
+	instruction sub-imm2reg = { 0000 0011, reg as op1, imm16 as op2, 0000} {
 		op1 = op1 - op2;
 		ip = ip + 4;
 	};
@@ -100,8 +100,8 @@ instructions:
         ip = ip + 4;
     };
 
-    instruction mov-imm2reg = { 0000 0111, reg as op1, imm16 as value, 0000 0000 0000 } {
-        op1 = value;
+    instruction mov-imm2reg = { 0000 0111, reg as op1, imm16 as op2, 0000 } {
+        op1 = op2;
         ip = ip + 4;
     };
 
@@ -120,7 +120,7 @@ instructions:
 		ip = ip + 4;
 	};
 
-	instruction and-imm2reg = { 0000 1011, reg as op1, imm16 as op2, 0000 0000 0000} {
+	instruction and-imm2reg = { 0000 1011, reg as op1, imm16 as op2, 0000} {
 		op1 = op1 & op2;
 		ip = ip + 4;
 	};
@@ -130,7 +130,7 @@ instructions:
         ip = ip + 4;
     };
 
-    instruction or-imm2reg = { 0000 1101, reg as op1, imm16 as op2, 0000 0000 0000} {
+    instruction or-imm2reg = { 0000 1101, reg as op1, imm16 as op2, 0000} {
         op1 = op1 | op2;
         ip = ip + 4;
     };
@@ -139,7 +139,7 @@ instructions:
         ip = ip + 4;
     };
 
-    instruction div-imm2reg = { 0000 1111, reg as op1, imm16 as op2, 0000 0000 0000} {
+    instruction div-imm2reg = { 0000 1111, reg as op1, imm16 as op2, 0000} {
         op1 = op1 / op2;
         ip = ip + 4;
     };
@@ -148,7 +148,7 @@ instructions:
         ip = ip + 4;
     };
 
-    instruction mul-imm2reg = { 0001 0001, reg as op1, imm16 as op2, 0000 0000 0000} {
+    instruction mul-imm2reg = { 0001 0001, reg as op1, imm16 as op2, 0000} {
         op1 = op1 * op2;
         ip = ip + 4;
     };
@@ -158,16 +158,16 @@ instructions:
         ip = ip + 4;
     };
 
-    instruction rem-imm2reg = { 0001 0011, reg as op1, imm16 as op2, 0000 0000 0000} {
+    instruction rem-imm2reg = { 0001 0011, reg as op1, imm16 as op2, 0000} {
         op1 = op1 % op2;
         ip = ip + 4;
     };
 
-    instruction jump = { 0001 0100, imm16 as op1, 0000 0000 0000 0000} {
+    instruction jump = { 0001 0100, imm16 as op1, 0000 0000} {
         ip = op1;
     };
 
-    instruction jumpeq = { 0001 0101, reg as op1, imm16 as op2, 0000 0000 0000} {
+    instruction jumpeq = { 0001 0101, reg as op1, imm16 as op2, 0000} {
         if op1 == 0x0 then
         {
             ip = op2;
@@ -177,7 +177,7 @@ instructions:
             ip = ip + 4;
         }
     };
-    instruction jumpgt = { 0001 0110, reg as op1, imm16 as op2, 0000 0000 0000} {
+    instruction jumpgt = { 0001 0110, reg as op1, imm16 as op2, 0000} {
        if (op1 >> 15 == 0x0) && (op1 != 0x0) then
        {
            ip = op2;
@@ -187,7 +187,7 @@ instructions:
            ip = ip + 4;
        }
     };
-    instruction jumpge = { 0001 0111, reg as op1, imm16 as op2, 0000 0000 0000} {
+    instruction jumpge = { 0001 0111, reg as op1, imm16 as op2, 0000} {
         if (op1 >> 15 == 0x0) then
         {
            ip = op2;
@@ -197,13 +197,13 @@ instructions:
            ip = ip + 4;
         }
     };
-    instruction jumplt = { 0001 1000, reg as op1, imm16 as op2, 0000 0000 0000} {
+    instruction jumplt = { 0001 1000, reg as op1, imm16 as op2, 0000} {
         if op1 >> 15 == 0x1 then // op1 < 0
             ip = op2;
         else
             ip = ip + 4;
     };
-    instruction jumple = { 0001 1001, reg as op1, imm16 as op2, 0000 0000 0000} {
+    instruction jumple = { 0001 1001, reg as op1, imm16 as op2, 0000} {
        if (op1 >> 15 == 0x1) || (op1 == 0x0) then // op1 <= 0
        {
            ip = op2;
@@ -220,21 +220,21 @@ instructions:
 		t = {0011}
 	};
 
-	instruction st = { 0001 1010, reg as op1, imm16 as op2, 0000 0000 0000 } {
-		data_ram:1[op1] = op2;
-		data_ram:1[op1+1] = op2>>8;
+	instruction st = { 0001 1010, reg as op1, imm16 as op2, 0000 } {
+		data_ram:1[op2] = op1;
+		data_ram:1[op2+1] = op1>>8;
 
 		ip = ip + 4;
 	};
 
-	instruction ld = { 0001 1011, reg as op1, imm16 as op2, 0000 0000 0000 } {
+	instruction ld = { 0001 1011, reg as op1, imm16 as op2, 0000 } {
 		op1 = data_ram:1[op2] + (data_ram:1[op2+1] << 8);
 
 		ip = ip + 4;
 	};
     instruction push = { 0001 1100, reg as op1, 0000 0000 0000 0000 0000 } {
         sp = sp - 2;
-        stack_ram:1[sp] = from;
+        stack_ram:1[sp] = op1;
         stack_ram:1[sp+1] = op1 >> 8;
 		ip = ip + 4;
     };
@@ -244,7 +244,7 @@ instructions:
 		ip = ip + 4;
     };
 
-    instruction call = { 0001 1110, imm16 as op1, 0000 0000 0000 0000 } {
+    instruction call = { 0001 1110, imm16 as op1, 0000 0000 } {
         sp = sp - 2;
         data_ram:1[sp] = ip;
         data_ram:1[sp+1] = ip >> 8;
@@ -280,9 +280,9 @@ mnemonics:
 	mnemonic load for ld(op1, op2) plain2;
 
     mnemonic call for call(op1) plain1;
-    mnemonic jump for jump(to) plain1;
-    mnemonic push for push(from) plain1;
-    mnemonic pop for pop(to) plain1;
+    mnemonic jump for jump(op1) plain1;
+    mnemonic push for push(op1) plain1;
+    mnemonic pop for pop(op1) plain1;
 
     mnemonic neg for negative (op1, op2) plain2;
     mnemonic _not for invert (op1, op2) plain2;
@@ -292,7 +292,7 @@ mnemonics:
 	mnemonic sub for sub-reg2reg (op1, op2) plain2,
 				 for sub-imm2reg (op1, op2) plain2;
 	mnemonic mov for mov-reg2reg (op1, op2) plain2,
-				 for mov-imm2reg ( op1, op2) plain2;
+				 for mov-imm2reg (op1, op2) plain2;
 	mnemonic _and for and-reg2reg (op1, op2) plain2,
 				 for and-imm2reg (op1, op2) plain2;
 	mnemonic _or for or-reg2reg (op1, op2) plain2,
@@ -304,9 +304,9 @@ mnemonics:
 	mnemonic rem for rem-reg2reg (op1, op2) plain2,
 				 for rem-imm2reg (op1, op2) plain2;
 
-    mnemonic jumpeq for jumpeq(op1, to) plain2;
-    mnemonic jumpgt for jumpgt(op1, to) plain2;
-    mnemonic jumpge for jumpge(op1, to) plain2;
-    mnemonic jumplt for jumplt(op1, to) plain2;
-    mnemonic jumple for jumple(op1, to) plain2;
+    mnemonic jumpeq for jumpeq(op1, op2) plain2;
+    mnemonic jumpgt for jumpgt(op1, op2) plain2;
+    mnemonic jumpge for jumpge(op1, op2) plain2;
+    mnemonic jumplt for jumplt(op1, op2) plain2;
+    mnemonic jumple for jumple(op1, op2) plain2;
 }
