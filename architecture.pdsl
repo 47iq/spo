@@ -6,8 +6,8 @@ registers:
 	storage IP [16];                // указатель на инструкцию
 	storage SP_STORAGE [16];        // указатель на стек
 	storage FP_STORAGE [16];        // указатель на фрейм
-	storage IN_STORAGE [8];         // регистр для ввода
-	storage OUT_STORAGE [8];        // регистр для вывода
+	storage IN_STORAGE [8];         // регистр ввода
+	storage OUT_STORAGE [8];        // регистр вывода
 
 	view R0 = R0_STORAGE;
 	view R1 = R1_STORAGE;
