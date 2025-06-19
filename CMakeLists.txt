@@ -20,6 +20,8 @@ add_executable(SPO_Lab1 main.c
         graph/execution.h
         graph/utils.c
         graph/utils.h
+        listing/listing.c
+        listing/listing.h
         code/asm_gen.h
         code/asm_gen.c
 )

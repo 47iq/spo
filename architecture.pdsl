@@ -5,39 +5,40 @@ registers:
 	storage R1_STORAGE [16];        // регистр общего назначения 1
 	storage IP [16];                // указатель на инструкцию
 	storage SP_STORAGE [16];        // указатель на стек
-	storage FP_STORAGE [16];        // указатель на фрейм
-	storage IN_STORAGE [8];         // регистр ввода
-	storage OUT_STORAGE [8];        // регистр вывода
+	storage BP_STORAGE [16];        // указатель на фрейм
+	storage IN_PORT [8];            // регистр ввода
+	storage OUT_PORT [8];           // регистр вывода
+    storage HP [16];                // указатель на кучу
 
 	view R0 = R0_STORAGE;
 	view R1 = R1_STORAGE;
 	view IPV = IP;
 	view SP = SP_STORAGE;
-	view FP = FP_STORAGE;
-    view IN = IN_STORAGE;
-    view OUT = OUT_STORAGE;
+	view BP = BP_STORAGE;
+    view IN = IN_PORT;
+    view OUT = OUT_PORT;
 
 memory:
 
-	range constants_ram [0x0000 .. 0xffff] {
-		cell = 8;
-		endianess = little-endian;
-		granularity = 2;
-	}
-
-	range code_ram [0x0000 .. 0xffff] {
+	range ram [0x0000 .. 0xffff] {
 		cell = 8;
 		endianess = little-endian;
 		granularity = 2;
 	}
 
 	range data_ram [0x0000 .. 0xffff] {
-		cell = 8;
-		endianess = little-endian;
-		granularity = 2;
-	}
+        cell = 8;
+        endianess = little-endian;
+        granularity = 2;
+    }
 
-	range stack_ram [0x0000 .. 0xffff] {
+    range stack_ram [0x0000 .. 0xffff] {
+        cell = 8;
+        endianess = little-endian;
+        granularity = 2;
+    }
+
+    range constants_ram [0x0000 .. 0xffff] {
         cell = 8;
         endianess = little-endian;
         granularity = 2;
@@ -52,7 +53,7 @@ instructions:
 		R1 = 0001,
 		IPV = 0100,
 		SP = 0101,
-		FP = 0110,
+		BP = 0110,
 		IN = 0111,
 		OUT = 1000
 	};
@@ -213,63 +214,123 @@ instructions:
 	};
 
 	instruction st = { 0001 1010, reg as op1, imm16 as op2, 0000 } {
-		data_ram:1[op2] = op1;
-		data_ram:1[op2+1] = op1>>8;
+		ram:1[op2] = op1;
+		ram:1[op2+1] = op1>>8;
 
 		IP = IP + 4;
 	};
 
 	instruction ld = { 0001 1011, reg as op1, imm16 as op2, 0000 } {
-		op1 = data_ram:1[op2] + (data_ram:1[op2+1] << 8);
+		op1 = ram:1[op2] + (ram:1[op2+1] << 8);
 
 		IP = IP + 4;
 	};
     instruction push = { 0001 1100, reg as op1, 0000 0000 0000 0000 0000 } {
         SP = SP - 2;
-        stack_ram:1[SP] = op1;
-        stack_ram:1[SP+1] = op1 >> 8;
+        ram:1[SP] = op1;
+        ram:1[SP+1] = op1 >> 8;
 		IP = IP + 4;
     };
     instruction pop = { 0001 1101, reg as op1, 0000 0000 0000 0000 0000 } {
-        op1 = stack_ram:1[SP] + (stack_ram:1[SP+1] << 8);
+        op1 = ram:1[SP] + (ram:1[SP+1] << 8);
         SP = SP + 2;
 		IP = IP + 4;
     };
 
     instruction call = { 0001 1110, imm16 as op1, 0000 0000 } {
         SP = SP - 2;
-        data_ram:1[SP] = IP;
-        data_ram:1[SP+1] = IP >> 8;
+        ram:1[SP] = IP;
+        ram:1[SP+1] = IP >> 8;
         SP = SP - 2;
-        data_ram:1[SP] = FP;
-        data_ram:1[SP+1] = FP >> 8;
-        FP = SP;
+        ram:1[SP] = BP;
+        ram:1[SP+1] = BP >> 8;
+        BP = SP;
         IP = op1;
     };
-    instruction ret = { 0001 1111 1111 1111 1111 1111 0000 0000 } {
-        if FP != 0 then {
-            SP = FP;
-            FP = data_ram:1[SP] + (data_ram:1[SP+1] << 8);
+    instruction ret = { 0001 1111, imm16 as op1, 0000 0000 } {
+        if BP != 0 then {
+            SP = BP;
+            BP = ram:1[SP] + (ram:1[SP+1] << 8);
             SP = SP + 2;
-            IP = data_ram:1[SP] + (data_ram:1[SP+1] << 8);
+            IP = ram:1[SP] + (ram:1[SP+1] << 8);
             SP = SP + 2;
+            SP = SP + op1 * 2;
         }
 
         IP = IP + 4;
     };
+    
+	instruction ld_bp = { 0010 0000, reg as op1, imm16 as op2, 0000 } {
+		op1 = ram:1[(BP + (~op2 + 1) * 8) & 0x0FFFF] + (ram:1[(BP + ((~op2 + 1) + 1) * 8) & 0x0FFFF]);
+
+		IP = IP + 4;
+	};
+
+	instruction st_bp = { 0010 0001, reg as op1, imm16 as op2, 0000 } {
+	    ram:1[(BP + (~op2 + 1) * 8) & 0x0FFFF] = op1;
+        ram:1[(BP + ((~op2 + 1) + 1) * 8) & 0x0FFFF] = op1 >> 8;
+
+        IP = IP + 4;
+    };
+
+    instruction ld_in = { 0010 0010, reg as op1, 0000 0000 0000 0000 0000 } {
+        op1 = IN;
+
+        IP = IP + 4;
+    };
+
+    instruction st_out = { 0010 0011, reg as op1, 0000 0000 0000 0000 0000 } {
+        OUT = op1;
+
+        IP = IP + 4;
+    };
+    
 	instruction hlt = { 1111 1111 1111 1111 1111 1111 1111 1111 } {
 	};
+
+	instruction jumpne = { 0010 0101, reg as op1, imm16 as op2, 0000} {
+        if op1 != 0x0 then
+        {
+            IP = op2;
+        }
+        else
+        {
+            IP = IP + 4;
+        }
+    };
+
+    instruction eq = { 0010 0110, reg as op1, reg as op2, 0000 0000 0000 0000} {
+        op1 = (op1 == op2);
+        IP = IP + 4;
+    };
+
+
+    instruction neq = { 0010 0111, reg as op1, reg as op2, 0000 0000 0000 0000} {
+        op1 = (op1 != op2);
+        IP = IP + 4;
+    };
+
+    instruction load_hp = { 0010 1000, imm16 as op1, 0000 0000} {
+        HP = op1;
+        IP = IP + 4;
+    };
 
 mnemonics:
 
 	mnemonic HLT for hlt();
-    mnemonic RET for ret();
 
 	format plain1 is "{1}";
 	format plain2 is "{1}, {2}";
 
+    mnemonic LOAD_HP for load_hp(op1) plain1;
+
+    mnemonic RET for ret(op1) plain1;
 	mnemonic ST for st(op1, op2) plain2;
+    mnemonic ST_BP for st_bp(op1, op2) plain2;
+    mnemonic ST_OUT for st_out(op1) plain1;
 	mnemonic LD for ld(op1, op2) plain2;
+    mnemonic LD_BP for ld_bp(op1, op2) plain2;
+    mnemonic LD_IN for ld_in(op1) plain1;
 
     mnemonic CALL for call(op1) plain1;
     mnemonic JUMP for jump(op1) plain1;
@@ -295,8 +356,11 @@ mnemonics:
 				 for div_const (op1, op2) plain2;
 	mnemonic REM for rem_register (op1, op2) plain2,
 				 for rem_const (op1, op2) plain2;
+    mnemonic EQ for eq(op1, op2) plain2;
+    mnemonic NEQ for neq(op1, op2) plain2;
 
     mnemonic JE for jumpeq(op1, op2) plain2;
+    mnemonic JNE for jumpne(op1, op2) plain2;
     mnemonic JGT for jumpgt(op1, op2) plain2;
     mnemonic JGE for jumpge(op1, op2) plain2;
     mnemonic JLT for jumplt(op1, op2) plain2;

@@ -1,0 +1,89 @@
+def sum(arg1 (of int), arg2 (of int))
+    arg1 + arg2;
+end
+
+def sub(arg1 (of int), arg2 (of int))
+    arg1 - arg2;
+end
+
+def mul(arg1 (of int), arg2 (of int))
+    arg1 * arg2;
+end
+
+def div(arg1 (of int), arg2 (of int))
+    arg1 / arg2;
+end
+
+def read_num()
+    i = 1;
+    in = 0;
+    res = 0;
+    while (true) {
+        in = stdin();
+        if (in = 13) then {
+            stdin();
+            break;
+        }
+        res = res * 10 + (in - 40);
+        i = i + 1;
+    } end
+    res;
+end
+
+def number_length(num (of int))
+    rest = 0;
+    count = 1;
+    rest = num / 10;
+    while (rest != 0) {
+        rest = rest / 10;
+        count = count + 1;
+    } end
+    count;
+end
+
+def print_num(num (of int))
+    rest = 0;
+    count = 0;
+    shift = 0;
+    rest = num;
+    count = number_length(num) - 1;
+    shift = 1;
+    while (count != 0) {
+        shift = shift * 10;
+        count = count - 1;
+    } end
+    while (shift != 0) {
+        stdout(rest / shift + 48);
+        rest = rest % shift;
+    } end
+    stdout(10);
+    stdout(13);
+    0;
+end
+
+def main()
+    a = 0;
+    b = 0;
+    op = 0;
+    res = 0;
+    while (true) {
+        a = read_num();
+        op = stdin();
+        stdin();
+        stdin();
+        if op == '+' then {
+            res = sum(a, b);
+        }
+        if op == '-' then {
+            res = sub(a, b);
+        }
+        if op == '*' then {
+            res = mul(a, b);
+        }
+        if op == '/' then {
+            res = div(a, b);
+        }
+        print_num(res);
+    } end
+    sum(a, b);
+end

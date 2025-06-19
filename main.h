@@ -3,7 +3,12 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include "stdbool.h"
+#include <string.h>
 #include "parser.tab.h"
+#include "graph/execution.h"
+#include "graph/utils.h"
+#include "listing/listing.h"
 
 extern int yyparse();
 

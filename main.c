@@ -1,81 +1,111 @@
 #include "main.h"
 #include "parser.h"
-#include "graph/execution.h"
 #include <stdio.h>
 #include <dirent.h>
 #include <libgen.h>
 
+void printParseTree(char *outputDirName, FILE *inputFile, char *baseInputFileName, ResultTree *resultParseTree) {
+    char outputParseTreeFileName[1024];
+    sprintf(outputParseTreeFileName, "%s/%s-parse-tree.txt", outputDirName, baseInputFileName);
+    FILE *outputParseTreeFile = fopen(outputParseTreeFileName, "w");
+    printTree(resultParseTree->tree, resultParseTree->size, outputParseTreeFile);
+    for (int j = 0; j < resultParseTree->errorsSize; ++j) {
+        fprintf(stderr, "%s", resultParseTree->errors[j]);
+    }
+    fclose(outputParseTreeFile);
+}
+
+
+void printExecutionGraph(char *outputDirName, char *baseInputFileName, ResultTree *resultParseTree,
+                         Array *resultExecutionGraph) {
+    for (int j = 0; j < resultExecutionGraph->nextPosition; ++j) {
+        ExecutionInfo *funExecution = resultExecutionGraph->elements[j];
+        for (int k = 0; k < funExecution->errorsCount; ++k) {
+            fprintf(stderr, "%s", funExecution->errors[k]);
+        }
+    }
+    for (int j = 0; j < resultExecutionGraph->nextPosition; ++j) {
+        ExecutionInfo *funExecution = resultExecutionGraph->elements[j];
+
+        char outputFunCallFileName[1024];
+        sprintf(outputFunCallFileName, "%s/%s.%s.ext-fun-call.txt", outputDirName, basename(funExecution->filename),
+                funExecution->name);
+        FILE *outputFunCallFile = fopen(outputFunCallFileName, "w");
+        char outputOperationTreesFileName[1024];
+        sprintf(outputOperationTreesFileName, "%s/%s.%s.ext-operation-tree.txt", outputDirName,
+                basename(funExecution->filename), funExecution->name);
+        FILE *outputOperationTreesFile = fopen(outputOperationTreesFileName, "w");
+        char outputExecutionFileName[1024];
+        sprintf(outputExecutionFileName, "%s/%s.%s.ext", outputDirName,
+                basename(funExecution->filename), funExecution->name);
+        FILE *outputExecutionFile = fopen(outputExecutionFileName, "w");
+
+        printExecution(funExecution, outputFunCallFile, outputOperationTreesFile, outputExecutionFile);
+
+        fclose(outputFunCallFile);
+        fclose(outputOperationTreesFile);
+        fclose(outputExecutionFile);
+    }
+}
+
+void printListingToFile(Array *resultExecutionGraph, char *outputDirName) {
+    char outputListingFileName[1024];
+    sprintf(outputListingFileName, "%s/listing.txt", outputDirName);
+    FILE *outputParseTreeFile = fopen(outputListingFileName, "w");
+    printListing(resultExecutionGraph, outputParseTreeFile);
+    fclose(outputParseTreeFile);
+}
+
+void fileCloses(DIR *outputDir, FILE *inputFiles[], int inputFilesNumber) {
+    closedir(outputDir);
+    for (int i = 0; i < inputFilesNumber; ++i) {
+        fclose(inputFiles[i]);
+    }
+}
+
 int main(int argc, char *argv[]) {
-    if (argc > 2) {
-        DIR *outputDir = opendir(argv[1]);
-        if (!outputDir) {
-            printf("cannot open output dir: %s\n", argv[1]);
-            return 1;
-        }
-        FILE *inputFiles;
-        for (int i = 2; i < argc; ++i) {
-            inputFiles = fopen(argv[i], "r");
-            if (!inputFiles) {
-                printf("cannot open input file: %s\n", argv[i]);
-                return 1;
-            }
-        }
-        for (int i = 0; i < argc - 2; ++i) {
-            char *filename = basename(argv[i + 2]);
-            FILE *inputFile = &inputFiles[i];
-            char outputParseTreeFileName[1024];
-            sprintf(outputParseTreeFileName, "%s/%s-parse-tree.txt", argv[1], basename(filename));
-            FILE *outputParseTreeFile = fopen(outputParseTreeFileName, "w");
-            ResultTree *result = parse(inputFile);
-            printTree(result->tree, result->size, outputParseTreeFile);
-            Array *executionRes =
-                    executionGraph(&(FilenameParseTree) {filename, result}, 1);
-            for (int j = 0; j < result->errorsSize; ++j) {
-                fprintf(stderr, "%s", result->errors[j]);
-            }
-            for (int j = 0; j < executionRes->nextPosition; ++j) {
-                ExecutionInfo *funExecution = executionRes->elements[j];
-                for (int k = 0; k < funExecution->errorsCount; ++k) {
-                    fprintf(stderr, "%s", funExecution->errors[k]);
-                }
-            }
-            char outputFunCallFileName[1024];
-            sprintf(outputFunCallFileName, "%s/%s.ext-fun-call.txt", argv[1], basename(filename));
-            FILE *outputFunCallFile = fopen(outputFunCallFileName, "w");
-            char outputOperationTreesFileName[1024];
-            sprintf(outputOperationTreesFileName, "%s/%s.ext-operation-tree.txt", argv[1],
-                    basename(filename));
-            FILE *outputOperationTreesFile = fopen(outputOperationTreesFileName, "w");
-            char outputExecutionFileName[1024];
-            sprintf(outputExecutionFileName, "%s/%s.ext", argv[1],
-                    basename(filename));
-            FILE *outputExecutionFile = fopen(outputExecutionFileName, "w");
-
-            fprintf(outputOperationTreesFile, "flowchart TB\n");
-            fprintf(outputExecutionFile, "flowchart TB\n");
-            fprintf(outputFunCallFile, "flowchart TB\n");
-
-            for (int j = 0; j < executionRes->nextPosition; ++j) {
-                ExecutionInfo *funExecution = executionRes->elements[j];
-                printExecution(funExecution, outputFunCallFile, outputOperationTreesFile, outputExecutionFile);
-            }
-
-            fprintf(outputOperationTreesFile, "\n");
-            fprintf(outputExecutionFile, "\n");
-            fprintf(outputFunCallFile, "\n");
-            fclose(outputFunCallFile);
-            fclose(outputOperationTreesFile);
-            fclose(outputExecutionFile);
-            fclose(outputParseTreeFile);
-            freeMemory(result);
-        }
-
-        closedir(outputDir);
-        for (int i = 0; i < argc - 2; ++i) {
-            fclose(&inputFiles[i]);
-        }
-    } else {
+    if (argc <= 2) {
         printf("Use parameter: with output dir and input files");
     }
+
+    char *outputDirName = argv[1];
+    DIR *outputDir = opendir(outputDirName);
+    if (!outputDir) {
+        printf("Can not open output dir");
+        return 1;
+    }
+
+    int inputFilesNumber = argc - 2;
+    char *inputFilesNames[inputFilesNumber];
+    FILE *inputFiles[inputFilesNumber];
+    for (int i = 0; i < inputFilesNumber; ++i) {
+        char *fileName = argv[i + 2];
+        inputFilesNames[i] = fileName;
+        FILE *inputFile = fopen(fileName, "r");
+        if (!inputFile) {
+            printf("Can not open input file: %s", argv[i]);
+            return 1;
+        }
+        inputFiles[i] = inputFile;
+    }
+
+    for (int i = 0; i < inputFilesNumber; ++i) {
+        FILE *inputFile = inputFiles[i];
+        char *baseInputFileName = basename(inputFilesNames[i]);
+
+        ResultTree *resultParseTree = parse(inputFile);
+        printParseTree(outputDirName, inputFile, baseInputFileName, resultParseTree);
+
+        FilenameParseTree fileNameParseTree = (FilenameParseTree) {baseInputFileName, resultParseTree};
+        Array *resultExecutionGraph = executionGraph(&fileNameParseTree, 1);
+        printExecutionGraph(outputDirName, baseInputFileName, resultParseTree, resultExecutionGraph);
+
+        placeLabels(resultExecutionGraph);
+        printListingToFile(resultExecutionGraph, outputDirName);
+
+        freeMemory(resultParseTree);
+    }
+
+    fileCloses(outputDir, inputFiles, inputFilesNumber);
     return 0;
 }

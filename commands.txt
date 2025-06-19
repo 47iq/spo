@@ -1,0 +1,3 @@
+mono ./Portable.RemoteTasks.Manager.exe -ul u311293 -up a7680c64-a0a4-4cd3-9cd5-5352066d5c31 -w -s Assemble definitionFile architecture.pdsl archName spo asmListing files/out/listing.txt
+mono ./Portable.RemoteTasks.Manager.exe -ul u311293 -up a7680c64-a0a4-4cd3-9cd5-5352066d5c31 -g a635f698-c8c8-45f4-b3d7-a2e4c6629b5b -r out.ptptb -o outt.ptptb
+mono ./Portable.RemoteTasks.Manager.exe -ul u311293 -up a7680c64-a0a4-4cd3-9cd5-5352066d5c31 -il -q -w -s ExecuteBinaryWithInteractiveInput stdinRegStName IN_PORT stdoutRegStName OUT_PORT definitionFile architecture.pdsl archName spo binaryFileToRun out.ptptb codeRamBankName ram ipRegStorageName IP finishMnemonicName HLT

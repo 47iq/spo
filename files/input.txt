@@ -5,6 +5,7 @@ def z() end
 
 def main(argc (of int), argv (of string array[10] array[10]))
     printf("1");
+    a = 1122;
 
     while(1) {
         printf("2");
@@ -65,6 +66,7 @@ def main(argc (of int), argv (of string array[10] array[10]))
     }
     printf("debug!\n");
 
+    i = 0;
     while(10) {
         if (a > b) then {
              i = i + 2;

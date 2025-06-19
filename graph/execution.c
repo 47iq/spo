@@ -8,7 +8,7 @@ struct FunCalls {
     Array *funCalls;
 };
 
-const int START_ARRAY_SIZE = 1000;
+const int START_ARRAY_SIZE = 5000;
 Array exceptions;
 int currentExecutionId = 0;
 
@@ -94,19 +94,18 @@ TreeNode *operationTreeNode(TreeNode *parsingTree, FunCalls *funCalls) {
     } else if (!strcmp(parsingTree->type, "block")) {
         return operationTreeNode(parsingTree->children[0], funCalls);
     } else if (!strcmp(parsingTree->type, "call")) {
-        char executionName[1024];
-        sprintf(executionName,
-                "call: %s",
-                parsingTree->children[0]->value);
         if (parsingTree->childrenQty == 1) {
-            node = mallocTreeNode(NULL, executionName, 0);
+            node = mallocTreeNode("CALL", NULL, 0);
         } else {
             Array argsArray = findListItemsUtil(parsingTree->children[1]->children[0]);
-            node = mallocTreeNode(NULL, executionName, argsArray.nextPosition);
+            node = mallocTreeNode("CALL", NULL, argsArray.nextPosition + 1);
             for (int i = 0; i < argsArray.nextPosition; ++i) {
-                node->children[i] = operationTreeNode(argsArray.elements[i], funCalls);
+                node->children[i + 1] = operationTreeNode(argsArray.elements[i], funCalls);
             }
         }
+        char executionName[1024];
+        sprintf(executionName, "%s", parsingTree->children[0]->value);
+        node->children[0] = mallocTreeNode(NULL, executionName, 0);
         char funCallOperationIdNodeString[1024];
         sprintf(funCallOperationIdNodeString, "%d", node->id);
         TreeNode *funCallOperationIdNode = mallocTreeNode("operationTreeId", funCallOperationIdNodeString, 1);
@@ -120,26 +119,79 @@ TreeNode *operationTreeNode(TreeNode *parsingTree, FunCalls *funCalls) {
         node->children[2] = operationTreeNode(parsingTree->children[2], funCalls);
     } else if (parsingTree->childrenQty == 2) {
         node = mallocTreeNode(parsingTree->type, parsingTree->value, parsingTree->childrenQty);
-        node->children[0] = operationTreeNode(parsingTree->children[0], funCalls);
-        node->children[1] = operationTreeNode(parsingTree->children[1], funCalls);
-    } else if (parsingTree->childrenQty == 0) {
-        if (!strcmp(parsingTree->type, "IDENTIFIER")) {
-            node = mallocTreeNode("read", NULL, 1);
+
+        if (!strcmp(parsingTree->type, "ASSIGN")) {
             char valuePlace[1024];
             sprintf(valuePlace,
-                    "value place '%s'",
+                    "%s",
+                    parsingTree->children[0]->value);
+            node->children[0] = mallocTreeNode(NULL, valuePlace, 0);
+            node->children[1] = operationTreeNode(parsingTree->children[1], funCalls);
+        } else {
+            node->children[0] = operationTreeNode(parsingTree->children[0], funCalls);
+            node->children[1] = operationTreeNode(parsingTree->children[1], funCalls);
+        }
+    } else if (parsingTree->childrenQty == 0) {
+        if (!strcmp(parsingTree->type, "IDENTIFIER")) {
+            node = mallocTreeNode("READ", NULL, 1);
+            char valuePlace[1024];
+            sprintf(valuePlace,
+                    "%s",
                     parsingTree->value);
             node->children[0] = mallocTreeNode(NULL, valuePlace, 0);
         } else {
+            node = mallocTreeNode("CONST", NULL, 2);
+            char *typeByLiteral = "";
+            if (!strcmp(parsingTree->type, "DEC")) {
+                typeByLiteral = "int";
+            } else if (!strcmp(parsingTree->type, "BIN")) {
+                typeByLiteral = "int";
+            } else if (!strcmp(parsingTree->type, "HEX")) {
+                typeByLiteral = "int";
+            } else if (!strcmp(parsingTree->type, "CHAR")) {
+                typeByLiteral = "char";
+            } else if (!strcmp(parsingTree->type, "STR")) {
+                typeByLiteral = "str";
+            } else if (!strcmp(parsingTree->type, "TRUE")) {
+                typeByLiteral = "bool";
+            } else if (!strcmp(parsingTree->type, "FALSE")) {
+                typeByLiteral = "bool";
+            }
             char constVal[1024];
-            sprintf(constVal,
-                    "const: %s",
-                    parsingTree->value);
-            node = mallocTreeNode(NULL, constVal, 0);
+            sprintf(constVal, "%s", typeByLiteral);
+            node->children[0] = mallocTreeNode(NULL, typeByLiteral, 0);
+            node->children[1] = mallocTreeNode(NULL, parsingTree->value, 0);
         }
     } else if (parsingTree->childrenQty == 1) {
         node = mallocTreeNode(parsingTree->type, parsingTree->value, parsingTree->childrenQty);
         node->children[0] = operationTreeNode(parsingTree->children[0], funCalls);
+    }
+    return node;
+}
+
+// декларация аргументов функции
+ExecutionNode *functionArgsExecutionNode(TreeNode *functionSignatureNode, ExecutionNode *nextNode,
+                                         ExecutionNode *breakNode, FunCalls *funCalls) {
+    ExecutionNode *node = initExecutionNode("");
+    node->defaultBranch = nextNode;
+    if (functionSignatureNode->children > 0 &&
+            functionSignatureNode->children[0] > 0 &&
+        !strcmp(functionSignatureNode->children[0]->children[0]->type, "argListItems")) {
+        Array args = findListItemsUtil(functionSignatureNode->children[0]->children[0]);
+        ExecutionNode *parentNode = node;
+        for (int i = 0; i < args.nextPosition; ++i) {
+            TreeNode *argDef = args.elements[i];
+            char argText[1024];
+            sprintf(argText, "ARG %s %s", argDef->children[0]->value, argDef->children[1]->value);
+            ExecutionNode *newDimNode = initExecutionNode(argText);
+            newDimNode->operationTree = mallocTreeNode("ARG", NULL, 2);
+            newDimNode->operationTree->children[0] = mallocTreeNode(NULL, argDef->children[1]->value, 0);
+            newDimNode->operationTree->children[1] = mallocTreeNode(NULL, argDef->children[0]->value, 0);
+            newDimNode->defaultBranch = parentNode->defaultBranch;
+            parentNode->defaultBranch = newDimNode;
+            parentNode = newDimNode;
+        }
+        parentNode->defaultBranch = nextNode;
     }
     return node;
 }
@@ -296,14 +348,14 @@ ExecutionNode *executionNode(TreeNode *treeNode, ExecutionNode *nextNode,
 ExecutionNode *initGraph(TreeNode *sourceItem, FunCalls *funCalls) {
     ExecutionNode *startNode = initExecutionNode("START");
     ExecutionNode *endNode = initExecutionNode("END");
+    ExecutionNode *listStatementNode = endNode;
     TreeNode *funcDef = sourceItem;
     if (funcDef->childrenQty == 2) {
-        ExecutionNode *listStatementNode =
-                executionNode(funcDef->children[1], endNode, NULL, funCalls);
-        startNode->defaultBranch = listStatementNode;
-    } else {
-        startNode->defaultBranch = endNode;
+         listStatementNode = executionNode(funcDef->children[1], endNode, NULL, funCalls);
     }
+    ExecutionNode *functionArgs =
+            functionArgsExecutionNode(funcDef->children[0], listStatementNode, NULL, funCalls);
+    startNode->defaultBranch = functionArgs;
     return startNode;
 }
 

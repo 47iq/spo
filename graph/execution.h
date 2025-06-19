@@ -4,6 +4,7 @@ typedef struct FilenameParseTree FilenameParseTree;
 typedef struct ExecutionNode ExecutionNode;
 typedef struct ExecutionInfo ExecutionInfo;
 typedef struct Array Array;
+typedef struct ListingNode ListingNode;
 
 struct ExecutionNode {
     char *desc;
@@ -12,6 +13,7 @@ struct ExecutionNode {
     ExecutionNode *conditionalBranch;
     int id;
     int printed;
+    ListingNode *listingNode;
 };
 
 struct ExecutionInfo {
